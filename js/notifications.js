@@ -132,7 +132,16 @@
               if(role === 'admin'){
                 const targetPath = '/admin/manage-orders.html'
                 const alreadyOn = (function(){ try{ const p = location.pathname.replace(/\\/g,'/'); return p.indexOf('manage-orders.html') !== -1 }catch(e){return false} })()
-                if(alreadyOn){ openOrderModal(orderId, nid); return }
+                if(alreadyOn){
+                  try{
+                    const url = new URL(window.location.href)
+                    url.searchParams.set('openOrder', orderId)
+                    window.location.href = url.toString()
+                  }catch(e){
+                    window.location.href = 'manage-orders.html?openOrder=' + encodeURIComponent(orderId)
+                  }
+                  return
+                }
                 // build href robustly: fallback to relative if origin is null (file://)
                 var href = ''
                 try{ href = (location && location.origin && location.origin !== 'null') ? (location.origin + targetPath) : ('admin/manage-orders.html') }catch(e){ href = 'admin/manage-orders.html' }

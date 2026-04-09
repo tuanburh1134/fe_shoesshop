@@ -3,6 +3,19 @@ const API_URL = BACKEND + "/api/products";
 function escapeHtml(s){ return String(s||'').replace(/[&"'<>]/g, function(m){ return ({'&':'&amp;','"':'&quot;',"'":"&#39;",'<':'&lt;','>':'&gt;'})[m] }) }
 let CURRENT_BRAND_FILTER = null;
 
+function showProductLoading(){
+        const container = document.getElementById("product-list");
+        if(!container) return;
+        container.innerHTML = `
+                <div class="w-100 d-flex align-items-center justify-content-center py-5" style="min-height:240px">
+                        <div class="text-center">
+                                <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+                                <div class="mt-2 text-muted">Đang tải sản phẩm...</div>
+                        </div>
+                </div>
+        `;
+}
+
 // Removed sampleProducts() to avoid shipping demo data in production.
 
 let ALL_PRODUCTS = [];
@@ -41,7 +54,7 @@ function addBadge(list, badge){
 async function loadProducts() {
         const container = document.getElementById("product-list");
         if(!container) return;
-        container.innerHTML = "";
+        showProductLoading();
 
         const { hotIds, counts } = computeHotProducts();
 
@@ -379,6 +392,10 @@ function renderPage(page){
         const start = (page - 1) * PAGE_SIZE;
         const end = start + PAGE_SIZE;
         const pageItems = filtered.slice(start, end);
+        if(pageItems.length === 0){
+                container.innerHTML = '<div class="text-center text-muted py-5">Chưa có sản phẩm phù hợp.</div>';
+                return;
+        }
         pageItems.forEach(p => container.innerHTML += renderProductCard(p));
 }
 
