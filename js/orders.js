@@ -1,5 +1,5 @@
 (function(){
-  const BACKEND = 'http://localhost:8080';
+  const BACKEND = 'https://be-shoesshop.onrender.com';
   const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
   const tabs = ['pending', 'approved', 'completed', 'history'];
   let productImageMap = {};
@@ -53,6 +53,27 @@
       total: Number(o.total) || 0,
       items: Array.isArray(o.items) ? o.items : []
     };
+  }
+
+  function getCurrentUserId(){
+    const cur = getCurrent();
+    if(cur && cur.id != null) return cur.id;
+    if(cur && cur.userId != null) return cur.userId;
+    if(cur && cur.username) return cur.username;
+    return 'user';
+  }
+
+  function addAdminCancelNotification(order){
+    try{
+      if(window.notifications && typeof window.notifications.add === 'function'){
+        window.notifications.add({
+          title: 'Người dùng đã hủy đơn',
+          message: 'Đơn ' + order.id + ' đã được người dùng hủy trước khi admin duyệt.',
+          target: 'admin',
+          orderId: order.id
+        });
+      }
+    }catch(e){ }
   }
 
   function classify(orders){
@@ -154,8 +175,66 @@
         '    </div>' +
         '  </div>' +
         '  <div class="mt-2">' + renderItemsLines(o) + '</div>' +
+        (type === 'pending'
+          ? ('<div class="text-end mt-3">' +
+             '<button type="button" class="btn btn-outline-danger btn-sm" data-cancel-order-id="' + escapeHtml(o.id) + '">Hủy đơn</button>' +
+             '</div>')
+          : '') +
         '</div>';
     }).join('');
+  }
+
+  async function cancelOrder(orderId){
+    const headers = getAuthHeader();
+    const reason = 'Người dùng hủy đơn';
+
+    if(headers.Authorization){
+      try{
+        await axios.put(BACKEND + '/api/orders/' + encodeURIComponent(orderId) + '/cancel',
+          { reason: reason },
+          { headers: headers }
+        );
+        if(window.showNotification) window.showNotification('Hủy đơn thành công', 'success');
+        addAdminCancelNotification({ id: orderId });
+        await render();
+        return;
+      }catch(e){
+        const msg = e && e.response && e.response.data && e.response.data.message
+          ? e.response.data.message
+          : 'Không thể hủy đơn lúc này';
+        if(window.showNotification) window.showNotification(msg, 'error');
+        return;
+      }
+    }
+
+    // Fallback local mode for non-auth sessions.
+    try{
+      const list = JSON.parse(localStorage.getItem('orders_v1') || '[]') || [];
+      const curId = String(getCurrentUserId());
+      const idx = list.findIndex(function(o){
+        const owner = String(o.userId != null ? o.userId : (o.userName || ''));
+        return String(o.id) === String(orderId) && owner === curId;
+      });
+      if(idx < 0){
+        if(window.showNotification) window.showNotification('Không tìm thấy đơn hàng để hủy', 'error');
+        return;
+      }
+      const ord = list[idx];
+      if(String(ord.status || '').toLowerCase() !== 'pending'){
+        if(window.showNotification) window.showNotification('Chỉ có thể hủy đơn đang chờ duyệt', 'error');
+        return;
+      }
+      ord.status = 'cancelled';
+      ord.cancelReason = reason;
+      list[idx] = ord;
+      localStorage.setItem('orders_v1', JSON.stringify(list));
+      localStorage.setItem('ordersUpdatedAt', String(Date.now()));
+      if(window.showNotification) window.showNotification('Hủy đơn thành công', 'success');
+      addAdminCancelNotification(ord);
+      await render();
+    }catch(e){
+      if(window.showNotification) window.showNotification('Không thể hủy đơn lúc này', 'error');
+    }
   }
 
   function switchTab(target){
@@ -224,6 +303,23 @@
     });
 
     switchTab('pending');
+
+    document.body.addEventListener('click', async function(ev){
+      const btn = ev.target.closest('[data-cancel-order-id]');
+      if(!btn) return;
+      const orderId = btn.getAttribute('data-cancel-order-id');
+      if(!orderId) return;
+
+      if(!window.confirm('Bạn chắc chắn muốn hủy đơn này?')) return;
+
+      btn.disabled = true;
+      try{
+        await cancelOrder(orderId);
+      }finally{
+        btn.disabled = false;
+      }
+    });
+
     await preloadProductImages();
     await render();
 

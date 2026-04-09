@@ -10,8 +10,7 @@
   const addAddrBtn = qs('#add-address')
   const statsTotalItems = qs('#total-purchased')
   const statsFirstPurchase = qs('#first-purchase')
-  // Use absolute backend URL when frontend is opened via file:// (no dev static server)
-  const BACKEND = window.location.protocol === 'file:' ? 'http://localhost:8080' : ''
+  const BACKEND = 'https://be-shoesshop.onrender.com'
 
   function persistToUsers(cur){
     try{
@@ -77,6 +76,30 @@
     try{ window.dispatchEvent(new Event('currentUserChanged')) }catch(e){}
   }
 
+  async function syncProfileToServer(cur){
+    if(!(cur && cur.username && cur.password)) return false
+    try{
+      const auth = 'Basic ' + btoa(cur.username + ':' + cur.password)
+      const payload = {
+        addresses: JSON.stringify(cur.addresses || [])
+      }
+      if(cur.avatarUrl) payload.avatarUrl = cur.avatarUrl
+      if(cur.email) payload.email = cur.email
+      const r = await axios.put(BACKEND + '/api/me', payload, { headers: { Authorization: auth } })
+      if(r && r.data){
+        const server = r.data
+        try{ cur.addresses = Array.isArray(server.addresses) ? server.addresses : JSON.parse(server.addresses || '[]') }catch(e){}
+        if(server.email) cur.email = server.email
+        if(server.avatarUrl) cur.avatarUrl = server.avatarUrl
+        saveCurrentUser(cur)
+      }
+      return true
+    }catch(err){
+      console.debug('profile: syncProfileToServer failed', err)
+      return false
+    }
+  }
+
   function renderAddresses(addrs){
     if(!addressesList) return
     addressesList.innerHTML = ''
@@ -106,13 +129,15 @@
     showAddressForm({mode:'edit', idx})
   }
 
-  function onDelAddr(e){
+  async function onDelAddr(e){
     if(!confirm('Xóa địa chỉ này?')) return
     const idx = parseInt(e.currentTarget.dataset.idx)
     const cur = JSON.parse(localStorage.getItem('currentUser')||'null')||{}
     cur.addresses = cur.addresses||[]
     cur.addresses.splice(idx,1)
     saveCurrentUser(cur); persistToUsers(cur); renderAddresses(cur.addresses)
+    const ok = await syncProfileToServer(cur)
+    if(!ok && window.showNotification) window.showNotification('Không thể lưu DB', 'Địa chỉ chỉ mới lưu cục bộ trên trình duyệt', 'error', 2400)
   }
 
   function onAddAddr(){
@@ -163,7 +188,7 @@
     }
 
     formWrap.querySelector('#addr-cancel').addEventListener('click', function(){ cleanup() })
-    formWrap.querySelector('#addr-save').addEventListener('click', function(){
+    formWrap.querySelector('#addr-save').addEventListener('click', async function(){
       const label = formWrap.querySelector('#addr-label').value.trim()
       const house = formWrap.querySelector('#addr-house').value.trim()
       const city = formWrap.querySelector('#addr-city').value.trim()
@@ -182,23 +207,9 @@
       // save locally first and mirror to users list so login keeps addresses
       saveCurrentUser(cur)
       persistToUsers(cur)
-      // attempt to persist to backend if authenticated
-      try{
-        if(cur && cur.username && cur.password){
-          const auth = 'Basic ' + btoa(cur.username + ':' + cur.password)
-          // payload: update only addresses and avatarUrl/email if present
-          const payload = { addresses: JSON.stringify(cur.addresses) }
-          if(cur.avatarUrl) payload.avatarUrl = cur.avatarUrl
-          if(cur.email) payload.email = cur.email
-          console.debug('profile: PUT /api/me', { url: BACKEND + '/api/me', payload })
-          axios.put(BACKEND + '/api/me', payload, { headers: { Authorization: auth } }).then(r=>{
-            // merge server return
-            const server = r.data
-            try{ cur.addresses = Array.isArray(server.addresses) ? server.addresses : JSON.parse(server.addresses||'[]') }catch(e){}
-            saveCurrentUser(cur)
-          }).catch(err=>{ console.debug('Failed to persist addresses to server', err) })
-        }
-      }catch(err){ console.debug('persist addresses error', err) }
+
+      const ok = await syncProfileToServer(cur)
+      if(!ok && window.showNotification) window.showNotification('Không thể lưu DB', 'Địa chỉ chỉ mới lưu cục bộ trên trình duyệt', 'error', 2400)
       cleanup()
       renderAddresses(cur.addresses)
     })

@@ -4,7 +4,11 @@
 	--accent:#FFD166; /* Vàng nhạt điểm nhấn */
 	--secondary:#0b69a3; /* Xanh chủ đạo */
 }
-body{font-family:Segoe UI, Roboto, Arial, sans-serif;color:#333;background:#FFFFFF}
+html,body{height:100%}
+body{font-family:Segoe UI, Roboto, Arial, sans-serif;color:#333;background:#FFFFFF;min-height:100vh;display:flex;flex-direction:column}
+
+/* Sticky footer: keep contact block pinned to bottom when page content is short. */
+#global-contact-footer{margin-top:auto !important;flex-shrink:0}
 
 .top-header{background:var(--primary);color:#fff}
 .top-header .logo{height:48px}

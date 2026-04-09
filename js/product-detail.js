@@ -185,6 +185,13 @@ function renderProduct(p, allProducts){
     function renderSizes(){
         if(!pdSizes) return;
         pdSizes.innerHTML = '';
+
+        // If product has color variants, require selecting color first before showing sizes.
+        if(colors.length > 0 && !selectedColor){
+            pdSizes.innerHTML = '<div class="small text-muted">Vui lòng chọn màu trước để hiển thị size.</div>';
+            return;
+        }
+
         const derivedSizes = getAvailableSizesFromInventory(inventory) || ['39','40','41','42','43','44'];
         derivedSizes.forEach(s => {
             const btn = document.createElement('button');
@@ -313,7 +320,7 @@ function renderProduct(p, allProducts){
                     const deviceId = getOrCreateDeviceId();
                     const cur = JSON.parse(localStorage.getItem('currentUser')||'null')||null;
                     const orderPayload = {
-                        items: [{ name: item.name, size: item.size, qty: item.qty, price: item.price, productId: item.id }],
+                        items: [{ name: item.name, color: item.color || null, size: item.size, qty: item.qty, price: item.price, productId: item.id }],
                         total: total,
                         address: payload.address,
                         phone: payload.phone,

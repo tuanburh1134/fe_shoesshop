@@ -1,5 +1,12 @@
 (function(){
   const ORDERS_KEY = 'orders_v1'
+  const BACKEND = (function(){
+    try{
+      const host = String(window.location.hostname || '').toLowerCase();
+      if(host.includes('onrender.com')) return 'https://be-shoesshop.onrender.com';
+    }catch(e){}
+    return 'http://localhost:8080';
+  })();
   function readOrders(){ try{ return JSON.parse(localStorage.getItem(ORDERS_KEY)||'[]') }catch(e){return[]} }
   function writeOrders(list){ localStorage.setItem(ORDERS_KEY, JSON.stringify(list)); localStorage.setItem('ordersUpdatedAt', Date.now()) }
 
@@ -16,6 +23,18 @@
 
   function fmt(v){ try{ return new Intl.NumberFormat('vi-VN').format(v) + ' đ' }catch(e){ return v } }
 
+  async function fetchOrderById(orderId){
+    try{
+      const hdr = getAuthHeader()
+      if(!hdr.Authorization) return null
+      const resp = await fetch(BACKEND + '/api/orders/' + encodeURIComponent(orderId), { headers: Object.assign({'Content-Type':'application/json'}, hdr) })
+      if(!resp.ok) return null
+      return await resp.json()
+    }catch(e){
+      return null
+    }
+  }
+
   async function renderList(){
     const container = document.getElementById('orders-list')
     if(!container) return
@@ -26,7 +45,7 @@
     try{
       const hdr = getAuthHeader()
       if(hdr.Authorization){
-        const resp = await fetch('http://localhost:8080/api/orders', { headers: Object.assign({'Content-Type':'application/json'}, hdr) })
+        const resp = await fetch(BACKEND + '/api/orders', { headers: Object.assign({'Content-Type':'application/json'}, hdr) })
         if(resp.ok){ list = await resp.json() }
         else { list = readOrders() || [] }
       } else {
@@ -85,7 +104,7 @@
         // call backend to update status
         try{
           const hdr = Object.assign({'Content-Type':'application/json'}, getAuthHeader())
-          const url = 'http://localhost:8080/api/orders/' + order.id + '/status?status=approved&shipper=' + encodeURIComponent(ship.shipper) + '&address=' + encodeURIComponent(ship.address||'')
+          const url = BACKEND + '/api/orders/' + order.id + '/status?status=approved&shipper=' + encodeURIComponent(ship.shipper) + '&address=' + encodeURIComponent(ship.address||'')
           const resp = await fetch(url, { method: 'PUT', headers: hdr })
           if(resp.ok){
             try{ const updated = await resp.json(); order = Object.assign(order, updated) }catch(e){}
@@ -110,7 +129,7 @@
         // call backend to update status (admin only)
         try{
           const hdr = Object.assign({'Content-Type':'application/json'}, getAuthHeader())
-          const url = 'http://localhost:8080/api/orders/' + order.id + '/status?status=cancelled&cancelReason=' + encodeURIComponent(reason)
+          const url = BACKEND + '/api/orders/' + order.id + '/status?status=cancelled&cancelReason=' + encodeURIComponent(reason)
           const resp = await fetch(url, { method: 'PUT', headers: hdr })
           if(resp.ok){
             try{ const updated = await resp.json(); order = Object.assign(order, updated) }catch(e){}
@@ -159,21 +178,31 @@
 
   function escapeHtml(s){ return String(s||'').replace(/[&"'<>]/g, function(m){ return ({'&':'&amp;','"':'&quot;',"'":'&#39;','<':'&lt;','>':'&gt;'})[m] }) }
 
-  document.addEventListener('DOMContentLoaded', function(){
+  document.addEventListener('DOMContentLoaded', async function(){
     const search = document.getElementById('orders-search')
     const filter = document.getElementById('filter-status')
     search && search.addEventListener('input', debounce(renderList, 220))
     filter && filter.addEventListener('change', renderList)
-    renderList()
+    await renderList()
     // if page opened with ?openOrder=ID then open that order's modal
     try{
       const params = new URLSearchParams(window.location.search)
       const toOpen = params.get('openOrder')
       if(toOpen){
-        setTimeout(()=>{
-          const el = document.querySelector('[data-order-id="'+toOpen+'"]')
-          if(el){ const view = el.querySelector('.btn-view'); if(view){ view.click(); } else { el.scrollIntoView({behavior:'smooth', block:'center'}) } }
-        }, 150)
+        const el = document.querySelector('[data-order-id="'+toOpen+'"]')
+        if(el){
+          const view = el.querySelector('.btn-view')
+          if(view){ view.click() }
+          else { el.scrollIntoView({behavior:'smooth', block:'center'}) }
+        }else{
+          // fallback: try fetching the order directly from backend
+          const order = await fetchOrderById(toOpen)
+          if(order){
+            showOrderModalInline(order)
+          } else if(window.showNotification){
+            window.showNotification('Không tìm thấy hóa đơn', 'Có thể thông báo cũ thuộc đơn local trước khi kết nối server', 'warning', 2600)
+          }
+        }
       }
     }catch(e){}
     window.addEventListener('storage', function(e){ if(e.key==='ordersUpdatedAt' || e.key==='notificationsUpdatedAt'){ renderList() } })
