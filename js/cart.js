@@ -1,7 +1,41 @@
 // Cart utility: stores cart in localStorage under 'cart'
 (function(){
-    const KEY = 'cart_items_v1';
-    const BACKEND = 'https://be-shoesshop.onrender.com';
+    const LEGACY_KEY = 'cart_items_v1';
+    const KEY = 'cart_items_v1_scoped';
+    const SELECTED_KEY = 'cart_selected_items_v1_scoped';
+    const UPDATED_KEY = 'cartUpdatedAt_scoped';
+    const BACKEND = (function(){
+        try{
+            const host = String(window.location.hostname || '').toLowerCase();
+            if(host.includes('onrender.com')) return 'https://be-shoesshop.onrender.com';
+        }catch(e){}
+        return 'http://localhost:8080';
+    })();
+
+    function getCurrentUser(){
+        try{ return JSON.parse(localStorage.getItem('currentUser') || 'null') || null; }catch(e){ return null; }
+    }
+
+    function getCartScope(){
+        const cur = getCurrentUser();
+        if(!cur) return 'guest';
+        if(cur.id != null) return 'uid_' + String(cur.id);
+        if(cur.username) return 'user_' + String(cur.username).trim().toLowerCase();
+        if(cur.email) return 'mail_' + String(cur.email).trim().toLowerCase();
+        return 'guest';
+    }
+
+    function getScopedCartKey(){
+        return KEY + '__' + getCartScope();
+    }
+
+    function getScopedSelectedKey(){
+        return SELECTED_KEY + '__' + getCartScope();
+    }
+
+    function getScopedUpdatedKey(){
+        return UPDATED_KEY + '__' + getCartScope();
+    }
 
     function getOrCreateDeviceId(){
         let deviceId = localStorage.getItem('device_id_v1');
@@ -20,9 +54,22 @@
 
     function readCart(){
         try{
-            const raw = localStorage.getItem(KEY);
-            if(!raw) return [];
-            return JSON.parse(raw);
+            const scopedKey = getScopedCartKey();
+            const raw = localStorage.getItem(scopedKey);
+            if(raw) return JSON.parse(raw);
+
+            // Backward compatibility: only migrate old shared cart into guest scope.
+            if(getCartScope() === 'guest'){
+                const legacyRaw = localStorage.getItem(LEGACY_KEY);
+                if(legacyRaw){
+                    const legacy = JSON.parse(legacyRaw);
+                    if(Array.isArray(legacy)){
+                        localStorage.setItem(scopedKey, JSON.stringify(legacy));
+                        return legacy;
+                    }
+                }
+            }
+            return [];
         }catch(e){
             console.error('Failed to read cart', e);
             return [];
@@ -31,11 +78,61 @@
 
     function writeCart(cart){
         try{
-            localStorage.setItem(KEY, JSON.stringify(cart));
+            localStorage.setItem(getScopedCartKey(), JSON.stringify(cart));
             // notify other tabs
-            localStorage.setItem('cartUpdatedAt', String(Date.now()));
+            localStorage.setItem(getScopedUpdatedKey(), String(Date.now()));
             updateBadge();
         }catch(e){console.error('Failed to write cart', e)}
+    }
+
+    function getCartItemKey(item){
+        return [String(item && item.id != null ? item.id : ''), String(item && item.size ? item.size : ''), String(item && item.color ? item.color : '')].join('||');
+    }
+
+    function readSelectedMap(){
+        try{
+            const raw = localStorage.getItem(getScopedSelectedKey());
+            if(!raw) return null;
+            const parsed = JSON.parse(raw);
+            if(parsed && typeof parsed === 'object') return parsed;
+        }catch(e){ /* ignore */ }
+        return null;
+    }
+
+    function writeSelectedMap(map){
+        try{ localStorage.setItem(getScopedSelectedKey(), JSON.stringify(map || {})); }catch(e){ /* ignore */ }
+    }
+
+    function clearSelectedMap(){
+        try{ localStorage.removeItem(getScopedSelectedKey()); }catch(e){ /* ignore */ }
+    }
+
+    function ensureSelectedMapForCart(cart){
+        const current = readSelectedMap();
+        const keysInCart = new Set((cart || []).map(getCartItemKey));
+
+        // first time: default all checked
+        if(current == null){
+            const init = {};
+            (cart || []).forEach(function(it){ init[getCartItemKey(it)] = true; });
+            writeSelectedMap(init);
+            return init;
+        }
+
+        // prune removed items, keep existing choices
+        const next = {};
+        Object.keys(current).forEach(function(k){
+            if(keysInCart.has(k)) next[k] = !!current[k];
+        });
+
+        // add new items as checked by default
+        (cart || []).forEach(function(it){
+            const k = getCartItemKey(it);
+            if(next[k] == null) next[k] = true;
+        });
+
+        writeSelectedMap(next);
+        return next;
     }
 
     function getTotalCount(cart){
@@ -79,9 +176,23 @@
     }
 
     function clearCart(){
-        localStorage.removeItem(KEY);
-        localStorage.setItem('cartUpdatedAt', String(Date.now()));
+        localStorage.removeItem(getScopedCartKey());
+        clearSelectedMap();
+        localStorage.setItem(getScopedUpdatedKey(), String(Date.now()));
         updateBadge();
+    }
+
+    function removeSelectedItemsFromCart(selectedItems){
+        const cart = readCart();
+        if(!cart.length) return;
+        const selectedKeys = new Set((selectedItems || []).map(getCartItemKey));
+        const remaining = cart.filter(function(it){ return !selectedKeys.has(getCartItemKey(it)); });
+        writeCart(remaining);
+        if(remaining.length === 0){
+            clearSelectedMap();
+        } else {
+            ensureSelectedMapForCart(remaining);
+        }
     }
 
     function addOrderNotifications(orderId){
@@ -240,6 +351,7 @@
         const el = document.getElementById('cart-items');
         if(!el) return;
         const cart = readCart();
+        const selectedMap = ensureSelectedMapForCart(cart);
         el.innerHTML = '';
         if(cart.length===0){
             el.innerHTML = '<div class="alert alert-info">Giỏ hàng đang rỗng.</div>';
@@ -260,18 +372,23 @@
             return digits ? parseInt(digits,10) : 0;
         }
 
-        let total = 0;
+        let selectedTotal = 0;
         const table = document.createElement('div');
         table.className = 'list-group';
         cart.forEach(item=>{
             const price = parsePrice(item.price);
             const subtotal = price * (item.qty || 1);
-            total += subtotal;
+            const itemKey = getCartItemKey(item);
+            const checked = !!selectedMap[itemKey];
+            if(checked) selectedTotal += subtotal;
 
             const row = document.createElement('div');
             row.className = 'list-group-item';
             row.innerHTML = `
                 <div class="d-flex gap-3 align-items-center">
+                    <div class="form-check m-0">
+                        <input class="form-check-input cart-item-check" type="checkbox" ${checked ? 'checked' : ''} data-item-key="${itemKey.replace(/"/g, '&quot;')}">
+                    </div>
                     <img src="${item.img||''}" style="width:84px;height:84px;object-fit:contain"/>
                     <div class="flex-fill">
                         <div class="fw-bold">${item.name}</div>
@@ -290,8 +407,8 @@
         footer.className = 'mt-3';
         footer.innerHTML = `
             <div class="d-flex justify-content-between align-items-center">
-                <div class="fs-5">Tổng:</div>
-                <div class="fs-4 text-danger">${fmtMoney(total)}</div>
+                <div class="fs-5">Tổng (đã chọn):</div>
+                <div class="fs-4 text-danger">${fmtMoney(selectedTotal)}</div>
             </div>
             <div class="mt-3 d-flex gap-2">
                 <button id="checkout-btn" class="btn btn-success">Thanh toán</button>
@@ -311,6 +428,15 @@
                 setQty(id,size,v);
                 renderCartPage();
             })
+        });
+        el.querySelectorAll('.cart-item-check').forEach(chk=>{
+            chk.addEventListener('change', function(){
+                const map = ensureSelectedMapForCart(readCart());
+                const itemKey = chk.getAttribute('data-item-key') || '';
+                map[itemKey] = !!chk.checked;
+                writeSelectedMap(map);
+                renderCartPage();
+            });
         });
         el.querySelectorAll('.btn-remove').forEach(btn=>btn.addEventListener('click', e=>{
             const id = btn.getAttribute('data-id');
@@ -333,9 +459,16 @@
         document.getElementById('checkout-btn').addEventListener('click', async ()=>{
             const cartNow = readCart();
             if(cartNow.length===0) return;
-            const total = cartNow.reduce((s,i)=> s + (parseInt(String(i.price||'').replace(/[^0-9]/g,''),10)||0) * (i.qty||1), 0);
+            const map = ensureSelectedMapForCart(cartNow);
+            const selectedItems = cartNow.filter(function(i){ return !!map[getCartItemKey(i)]; });
+            if(selectedItems.length===0){
+                if(window.showNotification) window.showNotification('Vui lòng tick sản phẩm cần thanh toán','error');
+                else alert('Vui lòng tick sản phẩm cần thanh toán');
+                return;
+            }
+            const total = selectedItems.reduce((s,i)=> s + (parseInt(String(i.price||'').replace(/[^0-9]/g,''),10)||0) * (i.qty||1), 0);
             try{
-                const payload = await showCheckoutModal(cartNow, total)
+                const payload = await showCheckoutModal(selectedItems, total)
                 if(!payload) return
                 const twoFactorOk = await requireTwoFactorForCheckout()
                 if(!twoFactorOk) return
@@ -343,7 +476,7 @@
                 // attempt server-side checkout first (will decrement inventory)
                 const deviceId = getOrCreateDeviceId();
                 const orderPayload = {
-                    items: cartNow.map(i=>({ name: i.name, size: i.size, qty: i.qty, price: i.price, productId: i.id })),
+                    items: selectedItems.map(i=>({ name: i.name, color: i.color || null, size: i.size, qty: i.qty, price: i.price, productId: i.id })),
                     total: total,
                     address: payload.address,
                     phone: payload.phone,
@@ -384,7 +517,7 @@
                         const paymentInfo = payRes && payRes.data ? payRes.data : {};
                         const finalStatus = await showPayOsQrModal(createdOrderId, total, paymentInfo, headers);
                         if(finalStatus === 'paid'){
-                            clearCart(); renderCartPage();
+                            removeSelectedItemsFromCart(selectedItems); renderCartPage();
                             addOrderNotifications(createdOrderId)
                             if(window.showNotification) window.showNotification('Thanh toán thành công','Đơn hàng đã được xác nhận thanh toán','success',2600)
                         }else if(finalStatus === 'expired'){
@@ -394,7 +527,7 @@
                     }
 
                     // cash on delivery
-                    clearCart(); renderCartPage();
+                    removeSelectedItemsFromCart(selectedItems); renderCartPage();
                     addOrderNotifications(createdOrderId)
                     if(window.showNotification) window.showNotification('Đặt hàng thành công','Đơn hàng đã được gửi','success',2200)
                     return;
@@ -411,7 +544,7 @@
                     try{ orders = JSON.parse(localStorage.getItem(ordersKey)||'[]') }catch(e){ orders = [] }
                     const order = {
                         id: 'o_' + Date.now(),
-                        items: cartNow,
+                        items: selectedItems,
                         total: total,
                         address: payload.address,
                         phone: payload.phone,
@@ -426,7 +559,7 @@
                     orders.unshift(order)
                     localStorage.setItem(ordersKey, JSON.stringify(orders))
                     addOrderNotifications(order.id)
-                    clearCart(); renderCartPage();
+                    removeSelectedItemsFromCart(selectedItems); renderCartPage();
                     if(window.showNotification) window.showNotification('Đặt hàng thành công','Đơn hàng chờ xác nhận','success',2200)
                 }
             }catch(err){ console.error('Checkout flow failed', err); if(window.showNotification) window.showNotification('Thanh toán thất bại','Vui lòng thử lại','error',2500) }
@@ -537,7 +670,10 @@
                                         try{
                                             const cur = JSON.parse(localStorage.getItem('currentUser')||'null')||{}
                                             const a = (cur.addresses||[])[parseInt(v,10)]
-                                            if(a) modal.querySelector('#checkout-address').value = a.full || ''
+                                            if(a){
+                                                modal.querySelector('#checkout-address').value = a.full || ''
+                                                if(a.phone) modal.querySelector('#checkout-phone').value = a.phone
+                                            }
                                         }catch(e){ modal.querySelector('#checkout-address').value = v }
                                     }
                                 })
@@ -571,8 +707,11 @@
     });
 
     // listen to storage updates from other tabs
-    window.addEventListener('storage', (e)=>{ if(e.key === 'cartUpdatedAt') { updateBadge(); renderCartPage(); } });
+    window.addEventListener('storage', (e)=>{
+        if(e.key === getScopedUpdatedKey() || e.key === 'currentUser'){
+            updateBadge();
+            renderCartPage();
+        }
+    });
 
 })();
-const cartEl = document.getElementById("cart-items")
-if(cartEl) cartEl.innerHTML = "<p>Giỏ hàng đang trống.</p>";

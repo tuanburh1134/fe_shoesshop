@@ -41,6 +41,37 @@
     }catch(e){}
     return fallback || 'Có lỗi xảy ra'
   }
+  function isInvalidCredentialsError(err, msg){
+    try{
+      var status = err && err.response ? err.response.status : null
+      var text = String(msg || '').toLowerCase()
+      if(text.indexOf('pin.required') >= 0 || text.indexOf('pin.invalid') >= 0 || text.indexOf('account.locked') >= 0) return false
+      if(status === 401 || status === 403) return true
+      if(text.indexOf('bad credentials') >= 0 || text.indexOf('invalid credentials') >= 0 || text.indexOf('unauthorized') >= 0) return true
+    }catch(e){}
+    return false
+  }
+  function createLoadingOverlay(text){
+    var old = document.getElementById('login-loading-overlay')
+    if(old && old.parentNode) old.parentNode.removeChild(old)
+
+    var overlay = document.createElement('div')
+    overlay.id = 'login-loading-overlay'
+    overlay.style.position = 'fixed'
+    overlay.style.inset = '0'
+    overlay.style.background = 'rgba(15,23,42,.45)'
+    overlay.style.display = 'flex'
+    overlay.style.alignItems = 'center'
+    overlay.style.justifyContent = 'center'
+    overlay.style.zIndex = '100005'
+    overlay.innerHTML = '' +
+      '<div style="background:#fff;padding:14px 16px;border-radius:12px;box-shadow:0 14px 28px rgba(0,0,0,.2);display:flex;align-items:center;gap:10px;min-width:220px;justify-content:center">' +
+      '  <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>' +
+      '  <span style="font-weight:600;color:#1f2937">' + (text || 'Đang đăng nhập...') + '</span>' +
+      '</div>'
+    document.body.appendChild(overlay)
+    return overlay
+  }
   function isGoogleClientConfigured(){
     return GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID.indexOf('YOUR_GOOGLE_CLIENT_ID') === -1
   }
@@ -304,29 +335,45 @@
 
     document.getElementById('login-form').addEventListener('submit', async function(e){
       e.preventDefault()
+      var form = e.currentTarget
+      var submitBtn = form.querySelector('button[type="submit"]')
+      var oldBtnHtml = submitBtn ? submitBtn.innerHTML : ''
+      var loadingOverlay = null
       var u = document.getElementById('login-username').value.trim()
       var p = document.getElementById('login-password').value
       if(!u || !p){ notify('Đăng nhập thất bại', 'Vui lòng nhập đầy đủ thông tin'); return }
 
-      var pin = null
-      try{
-        const statusRes = await axios.post(AUTH_API + '/2fa/status', { username: u })
-        const enabled = !!(statusRes && statusRes.data && statusRes.data.enabled)
-        if(enabled){
-          pin = await askForPinDialog('Xác thực 2 lớp', 'Tài khoản đã bật xác thực 2 lớp, vui lòng nhập mã PIN 6 số')
-          if(pin == null) return
-        }
-      }catch(statusErr){ /* ignore and fall back to API error handling */ }
+      if(submitBtn){
+        submitBtn.disabled = true
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Đang đăng nhập...'
+      }
+      loadingOverlay = createLoadingOverlay('Đang đăng nhập...')
 
       try{
+        var pin = null
+        try{
+          const statusRes = await axios.post(AUTH_API + '/2fa/status', { username: u })
+          const enabled = !!(statusRes && statusRes.data && statusRes.data.enabled)
+          if(enabled){
+            if(loadingOverlay && loadingOverlay.parentNode) loadingOverlay.parentNode.removeChild(loadingOverlay)
+            loadingOverlay = null
+            pin = await askForPinDialog('Xác thực 2 lớp', 'Tài khoản đã bật xác thực 2 lớp, vui lòng nhập mã PIN 6 số')
+            if(pin == null) return
+            loadingOverlay = createLoadingOverlay('Đang đăng nhập...')
+          }
+        }catch(statusErr){ /* ignore and fall back to API error handling */ }
+
         await doPasswordLogin(u, p, pin)
       }catch(err){
         const msg = apiMessage(err, 'Thông tin đăng nhập không đúng')
         if(String(msg).toLowerCase().indexOf('account.locked') >= 0){
           notify('Tài khoản đang bị khóa', 'Bạn không thể đăng nhập lúc này')
         } else if(String(msg).toLowerCase().indexOf('pin.required') >= 0 && !pin){
+          if(loadingOverlay && loadingOverlay.parentNode) loadingOverlay.parentNode.removeChild(loadingOverlay)
+          loadingOverlay = null
           var retryPin = await askForPinDialog('Xác thực 2 lớp', 'Vui lòng nhập mã PIN để hoàn tất đăng nhập')
           if(retryPin == null) return
+          loadingOverlay = createLoadingOverlay('Đang đăng nhập...')
           try{
             await doPasswordLogin(u, p, retryPin)
           }catch(err2){
@@ -335,9 +382,17 @@
           }
         } else if(handlePinErrorMessage(msg)){
           return
+        } else if(isInvalidCredentialsError(err, msg)) {
+          notify('Đăng nhập thất bại', 'Sai tài khoản hoặc mật khẩu, vui lòng nhập lại')
         } else {
           notify('Đăng nhập thất bại', msg)
         }
+      } finally {
+        if(submitBtn){
+          submitBtn.disabled = false
+          submitBtn.innerHTML = oldBtnHtml || 'Đăng nhập'
+        }
+        if(loadingOverlay && loadingOverlay.parentNode) loadingOverlay.parentNode.removeChild(loadingOverlay)
       }
     })
   }
