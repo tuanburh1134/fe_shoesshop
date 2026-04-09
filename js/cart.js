@@ -299,7 +299,11 @@
             let timer = null;
             let settled = false;
             const qrRaw = (payInfo && payInfo.qrCode) ? String(payInfo.qrCode) : '';
-            const checkoutUrl = (payInfo && payInfo.checkoutUrl) ? String(payInfo.checkoutUrl) : '';
+            let checkoutUrl = (payInfo && payInfo.checkoutUrl) ? String(payInfo.checkoutUrl) : '';
+            const paymentLinkId = (payInfo && payInfo.paymentLinkId) ? String(payInfo.paymentLinkId) : '';
+            if(!checkoutUrl && paymentLinkId){
+                checkoutUrl = 'https://pay.payos.vn/web/' + encodeURIComponent(paymentLinkId);
+            }
             let qrSrc = '';
             if(qrRaw){
                 qrSrc = qrRaw.startsWith('http') || qrRaw.startsWith('data:')
@@ -325,6 +329,7 @@
                             <h4 class="text-danger mb-3">${new Intl.NumberFormat('vi-VN').format(parsePayAmount(amount))} đ</h4>
                             ${qrSrc ? `<img src="${qrSrc}" alt="PayOS QR" style="max-width:260px;width:100%;height:auto;"/>` : '<div class="alert alert-warning">Không lấy được QR từ PayOS</div>'}
                             ${checkoutUrl ? `<div class="mt-3"><a href="${checkoutUrl}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">Mở trang thanh toán</a></div>` : ''}
+                            ${!qrSrc && !checkoutUrl ? `<details class="mt-3 text-start"><summary class="small text-muted">Chi tiết debug PayOS</summary><pre class="small mb-0">${JSON.stringify(payInfo || {}, null, 2)}</pre></details>` : ''}
                             <div class="small text-muted mt-3" id="payos-status-text">Đang chờ xác nhận giao dịch...</div>
                         </div>
                     </div>
@@ -521,6 +526,14 @@
                     if(payload.method === 'bank_transfer'){
                         const payRes = await postWithOptionalAuthRetry(BACKEND + '/api/payments/payos/create', { orderId: createdOrderId }, headers);
                         const paymentInfo = payRes && payRes.data ? payRes.data : {};
+                        try{
+                            localStorage.setItem('last_payos_create_debug', JSON.stringify({
+                                at: Date.now(),
+                                orderId: createdOrderId,
+                                response: paymentInfo
+                            }));
+                        }catch(e){ /* ignore */ }
+                        try{ console.log('[PayOS create response]', paymentInfo); }catch(e){ /* ignore */ }
                         const finalStatus = await showPayOsQrModal(createdOrderId, total, paymentInfo, headers);
                         if(finalStatus === 'paid'){
                             removeSelectedItemsFromCart(selectedItems); renderCartPage();
