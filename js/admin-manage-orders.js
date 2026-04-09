@@ -23,6 +23,55 @@
 
   function fmt(v){ try{ return new Intl.NumberFormat('vi-VN').format(v) + ' đ' }catch(e){ return v } }
 
+  let __pageLoader = null
+  function ensurePageLoader(){
+    if(__pageLoader) return __pageLoader
+    const el = document.createElement('div')
+    el.id = 'orders-page-loader'
+    el.style.position = 'fixed'
+    el.style.inset = '0'
+    el.style.background = 'rgba(255,255,255,0.75)'
+    el.style.backdropFilter = 'blur(1px)'
+    el.style.display = 'none'
+    el.style.alignItems = 'center'
+    el.style.justifyContent = 'center'
+    el.style.zIndex = '4000'
+    el.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+        <div style="font-weight:600;color:#1f2937;">Đang tải dữ liệu...</div>
+      </div>
+    `
+    document.body.appendChild(el)
+    __pageLoader = el
+    return el
+  }
+
+  function setPageLoading(show, text){
+    try{
+      const el = ensurePageLoader()
+      const msg = el.querySelector('div div:last-child')
+      if(msg && text) msg.textContent = text
+      el.style.display = show ? 'flex' : 'none'
+    }catch(e){}
+  }
+
+  function statusRank(status){
+    const s = String(status || '').toLowerCase()
+    if(s === 'pending') return 0
+    if(s === 'cancelled') return 1
+    if(s === 'approved') return 2
+    return 1
+  }
+
+  function orderTimestamp(order){
+    const ts = Number(order && order.createdAt)
+    if(Number.isFinite(ts) && ts > 0) return ts
+    const idNum = Number(order && order.id)
+    if(Number.isFinite(idNum) && idNum > 0) return idNum
+    return 0
+  }
+
   async function fetchOrderById(orderId){
     try{
       // Local fallback order ids (e.g. o_123...) are not backend numeric ids.
@@ -43,31 +92,40 @@
   async function renderList(){
     const container = document.getElementById('orders-list')
     if(!container) return
-    const q = (document.getElementById('orders-search') && document.getElementById('orders-search').value || '').toLowerCase()
-    const statusFilter = document.getElementById('filter-status') ? document.getElementById('filter-status').value : 'all'
-    let list = []
-    // try fetch from backend first (requires login/admin)
+    setPageLoading(true, 'Đang tải danh sách hóa đơn...')
     try{
-      const hdr = getAuthHeader()
-      if(hdr.Authorization){
-        const resp = await fetch(BACKEND + '/api/orders', { headers: Object.assign({'Content-Type':'application/json'}, hdr) })
-        if(resp.ok){ list = await resp.json() }
-        else { list = readOrders() || [] }
-      } else {
-        list = readOrders() || []
+      const q = (document.getElementById('orders-search') && document.getElementById('orders-search').value || '').toLowerCase()
+      const statusFilter = document.getElementById('filter-status') ? document.getElementById('filter-status').value : 'all'
+      let list = []
+      // try fetch from backend first (requires login/admin)
+      try{
+        const hdr = getAuthHeader()
+        if(hdr.Authorization){
+          const resp = await fetch(BACKEND + '/api/orders', { headers: Object.assign({'Content-Type':'application/json'}, hdr) })
+          if(resp.ok){ list = await resp.json() }
+          else { list = readOrders() || [] }
+        } else {
+          list = readOrders() || []
+        }
+      }catch(e){ list = readOrders() || [] }
+      // fallback to local if backend trả về rỗng (admin chưa login backend)
+      if(!list || list.length === 0){
+        try{ const localOrders = readOrders() || []; if(localOrders.length) list = localOrders; }catch(e){}
       }
-    }catch(e){ list = readOrders() || [] }
-    // fallback to local if backend trả về rỗng (admin chưa login backend)
-    if(!list || list.length === 0){
-      try{ const localOrders = readOrders() || []; if(localOrders.length) list = localOrders; }catch(e){}
-    }
-    if(statusFilter !== 'all') list = list.filter(o=>String(o.status||'').toLowerCase()===statusFilter)
-    if(q) list = list.filter(o=> String(o.id||'').toLowerCase().includes(q) || String(o.userName||'').toLowerCase().includes(q) )
+      if(statusFilter !== 'all') list = list.filter(o=>String(o.status||'').toLowerCase()===statusFilter)
+      if(q) list = list.filter(o=> String(o.id||'').toLowerCase().includes(q) || String(o.userName||'').toLowerCase().includes(q) )
 
-    if(list.length===0){ container.innerHTML = '<div class="p-3">Không có hóa đơn</div>'; return }
+      // Order display: newest first, and approved orders pushed lower.
+      list.sort((a, b) => {
+        const rankDiff = statusRank(a && a.status) - statusRank(b && b.status)
+        if(rankDiff !== 0) return rankDiff
+        return orderTimestamp(b) - orderTimestamp(a)
+      })
 
-    container.innerHTML = ''
-    list.forEach(order => {
+      if(list.length===0){ container.innerHTML = '<div class="p-3">Không có hóa đơn</div>'; return }
+
+      container.innerHTML = ''
+      list.forEach(order => {
       const item = document.createElement('div')
       item.className = 'list-group-item'
       item.setAttribute('data-order-id', order.id)
@@ -98,7 +156,7 @@
       `
 
       // attach handlers
-        item.querySelector('.btn-approve').addEventListener('click', async function(){
+      item.querySelector('.btn-approve').addEventListener('click', async function(){
         if(order.status === 'approved') return alert('Đã xác nhận')
         const ship = await openShipperModal(order)
         if(!ship) return
@@ -106,7 +164,7 @@
         order.address = ship.address
         order.status = 'approved'
         order.approvedAt = Date.now()
-        // call backend to update status
+        setPageLoading(true, 'Đang cập nhật trạng thái đơn hàng...')
         try{
           const hdr = Object.assign({'Content-Type':'application/json'}, getAuthHeader())
           const url = BACKEND + '/api/orders/' + order.id + '/status?status=approved&shipper=' + encodeURIComponent(ship.shipper) + '&address=' + encodeURIComponent(ship.address||'')
@@ -114,24 +172,27 @@
           if(resp.ok){
             try{ const updated = await resp.json(); order = Object.assign(order, updated) }catch(e){}
             writeOrders(readOrders().map(o=> String(o.id)===String(order.id)?order:o))
-            renderList(); return
+            await renderList()
+            return
           }
         }catch(e){ console.warn(e) }
+
         // fallback to local update
         writeOrders(readOrders().map(o=> o.id===order.id?order:o))
         try{
           const userTarget = order.userId || 'user'
           const nlist = (window.notifications.list && window.notifications.list()) || []
           const filtered = nlist.filter(n => !(String(n.orderId) === String(order.id) && (n.target===userTarget || n.target==='user' || !n.target)))
-          localStorage.setItem('site_notifications_v1', JSON.stringify(filtered)); localStorage.setItem('notificationsUpdatedAt', Date.now())
+          localStorage.setItem('site_notifications_v1', JSON.stringify(filtered))
+          localStorage.setItem('notificationsUpdatedAt', Date.now())
         }catch(e){ console.warn(e) }
-        renderList()
+        await renderList()
       })
 
       item.querySelector('.btn-cancel').addEventListener('click', async function(){
         let reason = ''
         while(!reason){ reason = prompt('Lý do hủy đơn (bắt buộc)'); if(reason===null) return; reason = reason.trim() }
-        // call backend to update status (admin only)
+        setPageLoading(true, 'Đang hủy đơn hàng...')
         try{
           const hdr = Object.assign({'Content-Type':'application/json'}, getAuthHeader())
           const url = BACKEND + '/api/orders/' + order.id + '/status?status=cancelled&cancelReason=' + encodeURIComponent(reason)
@@ -139,9 +200,11 @@
           if(resp.ok){
             try{ const updated = await resp.json(); order = Object.assign(order, updated) }catch(e){}
             writeOrders(readOrders().map(o=> String(o.id)===String(order.id)?order:o))
-            renderList(); return
+            await renderList()
+            return
           }
         }catch(e){ console.warn(e) }
+
         // fallback
         order.status = 'cancelled'
         order.cancelReason = reason
@@ -151,11 +214,19 @@
           if(window.notifications && window.notifications.add){
             const nlist = (window.notifications.list && window.notifications.list()) || []
             const existing = nlist.find(n => String(n.orderId) === String(order.id) && (n.target===userTarget || n.target==='user' || !n.target))
-            if(existing){ existing.title = 'Đơn đã bị hủy'; existing.message = 'Đơn ' + order.id + ' bị hủy: ' + reason; existing.read = false; existing.createdAt = Date.now(); localStorage.setItem('site_notifications_v1', JSON.stringify(nlist)); localStorage.setItem('notificationsUpdatedAt', Date.now()) }
-            else { window.notifications.add({ title: 'Đơn đã bị hủy', message: 'Đơn ' + order.id + ' bị hủy: ' + reason, target: userTarget, orderId: order.id }) }
+            if(existing){
+              existing.title = 'Đơn đã bị hủy'
+              existing.message = 'Đơn ' + order.id + ' bị hủy: ' + reason
+              existing.read = false
+              existing.createdAt = Date.now()
+              localStorage.setItem('site_notifications_v1', JSON.stringify(nlist))
+              localStorage.setItem('notificationsUpdatedAt', Date.now())
+            } else {
+              window.notifications.add({ title: 'Đơn đã bị hủy', message: 'Đơn ' + order.id + ' bị hủy: ' + reason, target: userTarget, orderId: order.id })
+            }
           }
         }catch(e){ console.warn(e) }
-        renderList()
+        await renderList()
       })
 
       item.querySelector('.btn-view').addEventListener('click', function(){
@@ -164,8 +235,11 @@
         showOrderModalInline(order)
       })
 
-      container.appendChild(item)
-    })
+        container.appendChild(item)
+      })
+    } finally {
+      setPageLoading(false)
+    }
   }
 
   function showOrderModalInline(order){
