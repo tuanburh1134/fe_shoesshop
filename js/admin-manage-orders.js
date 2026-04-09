@@ -25,6 +25,11 @@
 
   async function fetchOrderById(orderId){
     try{
+      // Local fallback order ids (e.g. o_123...) are not backend numeric ids.
+      if(!/^\d+$/.test(String(orderId || ''))){
+        const local = (readOrders() || []).find(o => String(o.id) === String(orderId));
+        return local || null;
+      }
       const hdr = getAuthHeader()
       if(!hdr.Authorization) return null
       const resp = await fetch(BACKEND + '/api/orders/' + encodeURIComponent(orderId), { headers: Object.assign({'Content-Type':'application/json'}, hdr) })
