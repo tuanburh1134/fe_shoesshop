@@ -261,6 +261,10 @@
         return {};
     }
 
+    function is401(err){
+        try{ return !!(err && err.response && err.response.status === 401) }catch(e){ return false }
+    }
+
     function parsePayAmount(total){
         const n = Number(total || 0);
         return Number.isFinite(n) ? Math.round(n) : 0;
@@ -315,7 +319,16 @@
 
             async function checkStatus(){
                 try{
-                    const res = await axios.get(BACKEND + '/api/payments/' + orderId + '/status', { headers });
+                    let res
+                    try{
+                        res = await axios.get(BACKEND + '/api/payments/' + orderId + '/status', { headers });
+                    }catch(err){
+                        if(is401(err)){
+                            res = await axios.get(BACKEND + '/api/payments/' + orderId + '/status');
+                        } else {
+                            throw err;
+                        }
+                    }
                     const st = res && res.data && res.data.paymentStatus ? String(res.data.paymentStatus).toLowerCase() : '';
                     const stText = modal.querySelector('#payos-status-text');
                     if(stText) stText.textContent = 'Trạng thái: ' + (st || 'pending');
@@ -473,7 +486,16 @@
                 try{
                     const cur = JSON.parse(localStorage.getItem('currentUser')||'null')||null
                     const headers = getAuthHeaders();
-                    const res = await axios.post(BACKEND + '/api/orders', orderPayload, { headers })
+                    let res
+                    try{
+                        res = await axios.post(BACKEND + '/api/orders', orderPayload, { headers })
+                    }catch(err){
+                        if(is401(err)){
+                            res = await axios.post(BACKEND + '/api/orders', orderPayload)
+                        } else {
+                            throw err;
+                        }
+                    }
                     const createdOrderId = res && res.data && res.data.id ? res.data.id : ('o_' + Date.now())
                     try{
                         if(cur && cur.username && cur.password && deviceId){
@@ -482,7 +504,16 @@
                     }catch(e){ console.debug('Device register skipped/failed', e) }
 
                     if(payload.method === 'bank_transfer'){
-                        const payRes = await axios.post(BACKEND + '/api/payments/payos/create', { orderId: createdOrderId }, { headers });
+                        let payRes
+                        try{
+                            payRes = await axios.post(BACKEND + '/api/payments/payos/create', { orderId: createdOrderId }, { headers });
+                        }catch(err){
+                            if(is401(err)){
+                                payRes = await axios.post(BACKEND + '/api/payments/payos/create', { orderId: createdOrderId });
+                            } else {
+                                throw err;
+                            }
+                        }
                         const paymentInfo = payRes && payRes.data ? payRes.data : {};
                         const finalStatus = await showPayOsQrModal(createdOrderId, total, paymentInfo, headers);
                         if(finalStatus === 'paid'){

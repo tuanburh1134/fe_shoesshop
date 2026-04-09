@@ -1,6 +1,6 @@
 (function(){
-  const API = 'http://localhost:8080/api/users'
-  const REGISTER_API = 'http://localhost:8080/api/auth/register'
+  const API = 'https://be-shoesshop.onrender.com/api/users'
+  const REGISTER_API = 'https://be-shoesshop.onrender.com/api/auth/register'
 
   function getApiErrorMessage(err, fallback){
     try{
