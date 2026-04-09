@@ -31,6 +31,18 @@
     return d;
   }
 
+  function toRevenueDate(order){
+    const st = String((order && order.status) || '').toLowerCase();
+    if(st === 'approved'){
+      const approvedAt = Number(order && order.approvedAt);
+      if(Number.isFinite(approvedAt) && approvedAt > 0){
+        const d = new Date(approvedAt);
+        if(!Number.isNaN(d.getTime())) return d;
+      }
+    }
+    return toDate(order);
+  }
+
   async function fetchOrders(){
     try{
       const headers = Object.assign({ 'Content-Type':'application/json' }, getAuthHeaders());
@@ -56,7 +68,7 @@
   function calcMonthlyRevenue(orders, year){
     const byMonth = new Array(12).fill(0);
     (orders || []).forEach(function(o){
-      const d = toDate(o);
+      const d = toRevenueDate(o);
       if(!d || d.getFullYear() !== year) return;
       byMonth[d.getMonth()] += parseAmount(o.total);
     });
@@ -69,7 +81,7 @@
     const m = now.getMonth();
     let sum = 0;
     (orders || []).forEach(function(o){
-      const d = toDate(o);
+      const d = toRevenueDate(o);
       if(!d) return;
       if(d.getFullYear() === y && d.getMonth() === m){
         sum += parseAmount(o.total);
@@ -81,7 +93,7 @@
   function calcMonthRevenueByDate(orders, year, month){
     let sum = 0;
     (orders || []).forEach(function(o){
-      const d = toDate(o);
+      const d = toRevenueDate(o);
       if(!d) return;
       if(d.getFullYear() === year && d.getMonth() === month){
         sum += parseAmount(o.total);
