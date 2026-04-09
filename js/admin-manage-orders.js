@@ -159,9 +159,9 @@
       })
 
       item.querySelector('.btn-view').addEventListener('click', function(){
-        // open modal using notifications module openOrderModal if available
-        if(window.openOrderModal){ try{ window.openOrderModal(order.id) }catch(e){ showOrderModalInline(order) } }
-        else { showOrderModalInline(order) }
+        // Always use admin modal with current rendered order data.
+        // notifications.js openOrderModal reads localStorage only and may miss DB-backed orders.
+        showOrderModalInline(order)
       })
 
       container.appendChild(item)
