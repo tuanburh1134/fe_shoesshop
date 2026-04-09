@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quản lý hàng hóa - myshoes</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <link href="../css/styles.css" rel="stylesheet">
+</head>
+<body>
+  <div class="d-flex admin-layout">
+    <aside class="admin-sidebar p-4">
+      <div class="mb-4 d-flex align-items-center">
+        <a href="../index.html" aria-label="Về trang chủ">
+          <img src="../assets/logo.jpg" alt="logo" style="height:40px;border-radius:6px;margin-right:8px">
+        </a>
+      </div>
+      <ul class="list-unstyled">
+        <li class="mb-2"><a href="dashboard.html" class="text-decoration-none"> <i class="fa fa-chart-line me-2"></i> Thống kê doanh thu</a></li>
+        <li class="mb-2"><a href="manage-product.html" class="text-decoration-none"> <i class="fa fa-boxes me-2"></i> Quản lý hàng hóa</a></li>
+        <li class="mb-2"><a href="manage-users.html" class="text-decoration-none"> <i class="fa fa-users me-2"></i> Quản lý tài khoản</a></li>
+        <li class="mb-2"><a href="manage-orders.html" class="text-decoration-none"> <i class="fa fa-receipt me-2"></i> Quản lý hóa đơn</a></li>
+        <li class="mb-2"><a href="#" class="text-decoration-none"> <i class="fa fa-cog me-2"></i> Cài đặt</a></li>
+        <li class="mt-4"><a href="../index.html" class="btn btn-outline-secondary btn-sm">Trở về trang chủ</a></li>
+      </ul>
+    </aside>
+
+    <main class="flex-fill p-4 admin-main">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Quản lý hàng hóa</h3>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card mb-3">
+            <div class="card-body">
+              <h5 class="card-title">Thêm / Sửa sản phẩm</h5>
+              <form id="product-form">
+                <input type="hidden" id="prod-id">
+                <div class="mb-2">
+                  <label class="form-label">Tên</label>
+                  <input id="prod-name" class="form-control" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Hãng</label>
+                  <select id="prod-brand" class="form-select">
+                    <option value="">-- Chọn hãng --</option>
+                  </select>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Mô tả</label>
+                  <textarea id="prod-desc" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Mô tả chi tiết</label>
+                  <textarea id="prod-detail" class="form-control" rows="4" placeholder="Mô tả chi tiết, vật liệu, ghi chú..."></textarea>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Ảnh sản phẩm (thumbnail)</label>
+                  <input id="prod-image" type="file" accept="image/*" class="form-control">
+                  <div id="prod-image-preview" class="mt-2"></div>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Ảnh chi tiết (mở khi bấm) — có thể chọn nhiều (tối đa 10)</label>
+                  <input id="prod-detail-images" type="file" accept="image/*" class="form-control" multiple>
+                  <div id="prod-detail-images-preview" class="mt-2 d-flex flex-wrap gap-2"></div>
+                </div>
+
+                <div class="mb-2">
+                  <label class="form-label">Màu sắc & tồn kho</label>
+                  <div class="mb-2">
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" id="color-white" checked>
+                      <label class="form-check-label" for="color-white">Trắng</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" id="color-black" checked>
+                      <label class="form-check-label" for="color-black">Đen</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" id="color-blue" checked>
+                      <label class="form-check-label" for="color-blue">Xanh</label>
+                    </div>
+                  </div>
+                  <div id="color-inventory" class="">
+                    <div class="mb-2 color-block" data-color="white">
+                      <div class="small text-muted mb-1">Trắng</div>
+                      <div class="row">
+                        <div class="col-4 col-sm-2 mb-1"><label>39</label><input id="qty_white_39" type="number" min="0" class="form-control"></div>
+                        <div class="col-4 col-sm-2 mb-1"><label>40</label><input id="qty_white_40" type="number" min="0" class="form-control"></div>
+                        <div class="col-4 col-sm-2 mb-1"><label>41</label><input id="qty_white_41" type="number" min="0" class="form-control"></div>
+                        <div class="col-4 col-sm-2 mb-1"><label>42</label><input id="qty_white_42" type="number" min="0" class="form-control"></div>
+                        <div class="col-4 col-sm-2 mb-1"><label>43</label><input id="qty_white_43" type="number" min="0" class="form-control"></div>
+                        <div class="col-4 col-sm-2 mb-1"><label>44</label><input id="qty_white_44" type="number" min="0" class="form-control"></div>
+                      </div>
+                    </div>
+                    <div class="mb-2 color-block" data-color="black">
+                      <div class="small text-muted mb-1">Đen</div>
+                      <div class="row">
+                        <div class="col-4 col-sm-2 mb-1"><label>39</label><input id="qty_black_39" type="number" min="0" class="form-control"></div>
+                        <div class="col-4 col-sm-2 mb-1"><label>40</label><input id="qty_black_40" type="number" min="0" class="form-control"></div>
+                        <div class="col-4 col-sm-2 mb-1"><label>41</label><input id="qty_black_41" type="number" min="0" class="form-control"></div>
+                        <div class="col-4 col-sm-2 mb-1"><label>42</label><input id="qty_black_42" type="number" min="0" class="form-control"></div>
+                        <div class="col-4 col-sm-2 mb-1"><label>43</label><input id="qty_black_43" type="number" min="0" class="form-control"></div>
+                        <div class="col-4 col-sm-2 mb-1"><label>44</label><input id="qty_black_44" type="number" min="0" class="form-control"></div>
+                      </div>
+                    </div>
+                    <div class="mb-2 color-block" data-color="blue">
+                      <div class="small text-muted mb-1">Xanh</div>
+                      <div class="row">
+                        <div class="col-4 col-sm-2 mb-1"><label>39</label><input id="qty_blue_39" type="number" min="0" class="form-control"></div>
+                        <div class="col-4 col-sm-2 mb-1"><label>40</label><input id="qty_blue_40" type="number" min="0" class="form-control"></div>
+                        <div class="col-4 col-sm-2 mb-1"><label>41</label><input id="qty_blue_41" type="number" min="0" class="form-control"></div>
+                        <div class="col-4 col-sm-2 mb-1"><label>42</label><input id="qty_blue_42" type="number" min="0" class="form-control"></div>
+                        <div class="col-4 col-sm-2 mb-1"><label>43</label><input id="qty_blue_43" type="number" min="0" class="form-control"></div>
+                        <div class="col-4 col-sm-2 mb-1"><label>44</label><input id="qty_blue_44" type="number" min="0" class="form-control"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Giá (VND)</label>
+                  <input id="prod-price" type="text" class="form-control" required placeholder="Nhập giá (ví dụ: 1.000.000)">
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Giảm giá (%)</label>
+                  <input id="prod-discount" type="number" min="0" max="100" class="form-control" placeholder="Ví dụ: 10 cho 10%">
+                </div>
+                
+                <div>
+                  <button class="btn btn-primary" id="save-btn">Lưu</button>
+                  <button class="btn btn-secondary" id="reset-btn" type="button">Tạo mới</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Danh sách sản phẩm</h5>
+              <div class="mb-2">
+                <input id="admin-product-search" class="form-control" placeholder="Tìm theo tên giày...">
+              </div>
+              <div id="admin-product-list" class="list-group"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        // mark active link in sidebar
+        (function(){
+          try{
+            var links = document.querySelectorAll('.admin-sidebar a');
+            var path = window.location.pathname.replace(/\\/g,'/');
+            links.forEach(function(a){
+              var href = a.getAttribute('href');
+              if(!href) return;
+              var linkPath = href.indexOf('http')===0 ? (new URL(href)).pathname : href;
+              if(path.endsWith(linkPath) || path.indexOf(linkPath) !== -1){
+                a.classList.add('active');
+              }
+            });
+          }catch(e){console.warn(e)}
+        })();
+
+        // keep color inventory blocks in sync with selected color checkboxes
+        (function(){
+          function syncColorBlocks(){
+            ['white','black','blue'].forEach(function(color){
+              var cb = document.getElementById('color-' + color);
+              var block = document.querySelector('.color-block[data-color="' + color + '"]');
+              if(!block) return;
+              block.style.display = (cb && cb.checked) ? '' : 'none';
+            });
+          }
+          document.addEventListener('DOMContentLoaded', function(){
+            ['white','black','blue'].forEach(function(color){
+              var cb = document.getElementById('color-' + color);
+              if(cb) cb.addEventListener('change', syncColorBlocks);
+            });
+            syncColorBlocks();
+          });
+        })();
+      </script>
+
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="../js/utils.js?v=3"></script>
+  <script src="../js/auth.js?v=3"></script>
+  <script src="../js/notifications.js?v=4"></script>
+  <script src="../js/admin-manage-product.js?v=4"></script>
+  <script src="../js/footer-contact.js?v=4"></script>
+</body>
+</html>

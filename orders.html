@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Đơn hàng của tôi - myshoes</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <link href="css/styles.css" rel="stylesheet">
+</head>
+<body>
+<header class="top-header">
+  <div class="container d-flex align-items-center justify-content-between py-2">
+    <div class="brand d-flex align-items-center">
+      <img src="assets/logo.jpg" alt="myshoes" class="logo me-3" id="site-logo">
+    </div>
+
+    <div class="search-wrap flex-fill mx-4">
+      <form class="d-flex" role="search">
+        <input class="form-control me-2 search-input" type="search" placeholder="Tìm kiếm sản phẩm..." aria-label="Search">
+        <button class="btn btn-search" type="submit"><i class="fa fa-search"></i></button>
+      </form>
+    </div>
+
+    <div class="header-actions d-flex align-items-center">
+      <div id="user-area" class="d-flex align-items-center position-relative">
+        <a id="account-link" href="#" class="me-3 text-white header-link"><i class="fa fa-user-circle fa-lg"></i><span id="account-text" class="d-none d-lg-inline ms-1">Tài khoản</span></a>
+        <div id="account-menu" class="account-dropdown" style="display:none"></div>
+        <a id="logout-link" href="#" class="me-3 text-white header-link d-none">Đăng xuất</a>
+      </div>
+      <a href="cart.html" class="position-relative text-white header-link">
+        <i class="fa fa-shopping-bag fa-lg"></i>
+        <span class="cart-badge">0</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<div class="container py-4">
+  <h3 class="mb-3">Đơn hàng của tôi</h3>
+
+  <div class="d-flex flex-wrap gap-2 mb-3" id="orders-tabs">
+    <button class="btn btn-outline-primary active" data-orders-tab="pending" type="button">Đơn đã đặt</button>
+    <button class="btn btn-outline-primary" data-orders-tab="approved" type="button">Đơn đã được duyệt</button>
+    <button class="btn btn-outline-primary" data-orders-tab="completed" type="button">Đơn đã hoàn thành</button>
+    <button class="btn btn-outline-primary" data-orders-tab="history" type="button">Lịch sử mua hàng</button>
+  </div>
+
+  <div class="card mb-3" id="orders-panel-pending">
+    <div class="card-body">
+      <h5 class="mb-3">Đơn đã đặt (chờ duyệt)</h5>
+      <div id="orders-pending" class="orders-group-list"></div>
+    </div>
+  </div>
+
+  <div class="card mb-3 d-none" id="orders-panel-approved">
+    <div class="card-body">
+      <h5 class="mb-3">Đơn đã được duyệt (đang giao)</h5>
+      <div id="orders-approved" class="orders-group-list"></div>
+    </div>
+  </div>
+
+  <div class="card mb-3 d-none" id="orders-panel-completed">
+    <div class="card-body">
+      <h5 class="mb-3">Đơn đã hoàn thành</h5>
+      <div id="orders-completed" class="orders-group-list"></div>
+    </div>
+  </div>
+
+  <div class="card mb-3 d-none" id="orders-panel-history">
+    <div class="card-body">
+      <h5 class="mb-3">Lịch sử mua hàng</h5>
+      <div id="orders-history" class="orders-group-list"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/notifications.js?v=4"></script>
+<script src="js/cart.js?v=2"></script>
+<script src="js/orders.js?v=1"></script>
+<script src="js/footer-contact.js?v=4"></script>
+</body>
+</html>

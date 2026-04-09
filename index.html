@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+        <meta charset="UTF-8">
+        <title>myshoes - Trang chủ</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+        <link href="css/styles.css" rel="stylesheet">
+</head>
+<body>
+
+<!-- Top header -->
+<header class="top-header">
+    <div class="container d-flex align-items-center justify-content-between py-2">
+        <div class="brand d-flex align-items-center">
+            <img src="assets/logo.jpg" alt="myshoes" class="logo me-3" id="site-logo">
+        </div>
+
+        <div class="search-wrap flex-fill mx-4">
+            <form class="d-flex" role="search">
+                <input class="form-control me-2 search-input" type="search" placeholder="Tìm kiếm sản phẩm..." aria-label="Search">
+                <button class="btn btn-search" type="submit"><i class="fa fa-search"></i></button>
+            </form>
+        </div>
+
+        <div class="header-actions d-flex align-items-center">
+            <div id="user-area" class="d-flex align-items-center position-relative">
+                <a id="account-link" href="#" class="me-3 text-white header-link"><i class="fa fa-user-circle fa-lg"></i><span id="account-text" class="d-none d-lg-inline ms-1">Tài khoản</span></a>
+                <div id="account-menu" class="account-dropdown" style="display:none">
+                    <!-- menu items injected by JS -->
+                </div>
+                <a id="logout-link" href="#" class="me-3 text-white header-link d-none">Đăng xuất</a>
+            </div>
+            <!-- notification button inserted by js/notifications.js -->
+            <a href="cart.html" class="position-relative text-white header-link">
+                <i class="fa fa-shopping-bag fa-lg"></i>
+                <span class="cart-badge">0</span>
+            </a>
+                </div>
+        </div>
+</header>
+
+<!-- Categories nav (moved above carousel, sát header) -->
+<nav class="categories-nav">
+    <div class="container d-flex gap-3 align-items-center">
+        <!-- categories injected by js/product.js -->
+    </div>
+</nav>
+
+<!-- Header image box (carousel) - full width with centered max container -->
+<section class="hero-fullwidth">
+    <div class="container-wide">
+        <div id="header-carousel" class="header-carousel position-relative">
+            <img id="header-carousel-img" src="assets/hello1.jpg" alt="Feature" class="img-fluid">
+            <button id="header-carousel-next" class="carousel-next btn btn-sm btn-primary">›</button>
+        </div>
+    </div>
+</section>
+
+<!-- Removed three promo boxes under the carousel to make hero area clean -->
+
+<!-- Product listing (populated by js/product.js) -->
+<section class="container-wide my-4">
+    <h4 class="mb-3">Sản phẩm nổi bật</h4>
+    <div id="product-list" class="product-grid"></div>
+    <div id="pagination" class="d-flex justify-content-center mt-4"></div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/product.js"></script>
+<script src="js/cart.js?v=2"></script>
+<script src="js/auth.js"></script>
+<script src="js/header.js"></script>
+<script src="js/notifications.js?v=4"></script>
+<script src="js/hero-carousel.js"></script>
+<script src="js/chatbot.js"></script>
+<script src="js/footer-contact.js?v=4"></script>
+</body>
+
+<!-- Global modal for in-place management (used by account dropdown) -->
+<div class="modal fade" id="global-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="global-modal-title">Modal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="global-modal-body" style="min-height:360px;">
+                <!-- content injected dynamically (iframe for pages) -->
+            </div>
+        </div>
+    </div>
+</div>
+</html>
+</body>
+</html>

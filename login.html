@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Đăng nhập - myshoes</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/styles.css" rel="stylesheet">
+</head>
+<body class="auth-bg text-dark">
+  <div class="container auth-container py-5">
+    <div class="row justify-content-center">
+      <div class="col-md-6">
+        <div class="auth-wrap bg-white p-4 shadow-sm">
+          <div class="text-center">
+            <img src="assets/logo.jpg" alt="Logo" class="auth-logo">
+          </div>
+          <h5 class="mb-3 text-center">Đăng nhập</h5>
+          <form id="login-form">
+            <div class="mb-3">
+              <label class="form-label">Tên đăng nhập :</label>
+              <input id="login-username" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Mật khẩu :</label>
+              <input id="login-password" type="password" class="form-control" required>
+            </div>
+            <button class="btn btn-primary w-100" type="submit">Đăng nhập</button>
+            <div class="text-center text-muted small mt-3 mb-2">hoặc</div>
+            <div id="google-login-btn" class="d-flex justify-content-center"></div>
+            <div class="text-center mt-3 small">Chưa có tài khoản ? <a href="register.html" id="goto-register">Đăng ký</a></div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="js/auth.js"></script>
+  <script src="js/footer-contact.js?v=4"></script>
+</body>
+</html>
