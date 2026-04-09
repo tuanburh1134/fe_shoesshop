@@ -1,6 +1,5 @@
 (function(){
   const BACKEND = 'https://be-shoesshop.onrender.com';
-  const ORDERS_KEY = 'orders_v1';
 
   function getAuthHeaders(){
     try{
@@ -10,11 +9,6 @@
       }
     }catch(e){}
     return {};
-  }
-
-  function readLocalOrders(){
-    try{ return JSON.parse(localStorage.getItem(ORDERS_KEY)||'[]') || []; }
-    catch(e){ return []; }
   }
 
   function parseAmount(v){
@@ -38,21 +32,19 @@
   }
 
   async function fetchOrders(){
-    let list = [];
     try{
       const headers = Object.assign({ 'Content-Type':'application/json' }, getAuthHeaders());
-      if(headers.Authorization){
-        const resp = await fetch(BACKEND + '/api/orders', { headers });
-        if(resp.ok){
-          list = await resp.json();
-        }
-      }
-    }catch(e){ /* fallback below */ }
+      if(!headers.Authorization) return [];
 
-    if(!Array.isArray(list) || list.length === 0){
-      list = readLocalOrders();
+      const resp = await fetch(BACKEND + '/api/orders', { headers });
+      if(!resp.ok){
+        return [];
+      }
+      const list = await resp.json();
+      return Array.isArray(list) ? list : [];
+    }catch(e){
+      return [];
     }
-    return Array.isArray(list) ? list : [];
   }
 
   function approvedOrders(orders){
@@ -300,10 +292,5 @@
   document.addEventListener('DOMContentLoaded', function(){
     markSidebarActive();
     renderDashboard();
-    window.addEventListener('storage', function(e){
-      if(e.key === 'ordersUpdatedAt' || e.key === ORDERS_KEY){
-        renderDashboard();
-      }
-    });
   });
 })();

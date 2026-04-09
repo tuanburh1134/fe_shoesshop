@@ -63,6 +63,61 @@
     return 'user';
   }
 
+  function getCurrentUserKey(){
+    const cur = getCurrent() || {};
+    return String(cur.username || cur.email || cur.id || 'guest').toLowerCase();
+  }
+
+  function getSeenApprovedKey(){
+    return 'seen_approved_shipping_notice_v1_' + getCurrentUserKey();
+  }
+
+  function readSeenApprovedSet(){
+    try{
+      const arr = JSON.parse(localStorage.getItem(getSeenApprovedKey()) || '[]');
+      return new Set(Array.isArray(arr) ? arr.map(String) : []);
+    }catch(e){
+      return new Set();
+    }
+  }
+
+  function writeSeenApprovedSet(setObj){
+    try{
+      localStorage.setItem(getSeenApprovedKey(), JSON.stringify(Array.from(setObj || [])));
+    }catch(e){}
+  }
+
+  function syncApprovedShippingNotifications(orders){
+    try{
+      const approvedOrders = (orders || []).filter(function(o){
+        return String(o && o.status || '').toLowerCase() === 'approved';
+      });
+      if(!approvedOrders.length) return;
+
+      const seen = readSeenApprovedSet();
+      let changed = false;
+
+      approvedOrders.forEach(function(o){
+        const id = String(o && o.id || '');
+        if(!id || seen.has(id)) return;
+        seen.add(id);
+        changed = true;
+        try{
+          if(window.notifications && typeof window.notifications.add === 'function'){
+            window.notifications.add({
+              title: 'Đơn hàng đang giao',
+              message: 'Đơn ' + id + ' đang trên đường giao tới bạn trong thời gian sớm nhất.',
+              target: getCurrentUserId(),
+              orderId: id
+            });
+          }
+        }catch(e){}
+      });
+
+      if(changed) writeSeenApprovedSet(seen);
+    }catch(e){}
+  }
+
   function addAdminCancelNotification(order){
     try{
       if(window.notifications && typeof window.notifications.add === 'function'){
@@ -77,16 +132,12 @@
   }
 
   function classify(orders){
-    const now = Date.now();
     const pending = [];
     const approved = [];
     const completed = [];
 
     orders.forEach(function(o){
       const st = String(o.status || '').toLowerCase();
-      const approvedAt = Number(o.approvedAt || 0) || 0;
-      const etaAt = approvedAt ? approvedAt + FIVE_DAYS : 0;
-      const isCompletedByTime = approvedAt && now >= etaAt;
 
       if(st === 'pending'){
         pending.push(o);
@@ -94,8 +145,7 @@
       }
 
       if(st === 'approved'){
-        if(isCompletedByTime) completed.push(o);
-        else approved.push(o);
+        approved.push(o);
         return;
       }
 
@@ -180,8 +230,62 @@
              '<button type="button" class="btn btn-outline-danger btn-sm" data-cancel-order-id="' + escapeHtml(o.id) + '">Hủy đơn</button>' +
              '</div>')
           : '') +
+        (type === 'approved'
+          ? ('<div class="text-end mt-3">' +
+             '<button type="button" class="btn btn-success btn-sm" data-received-order-id="' + escapeHtml(o.id) + '">Đã nhận được hàng</button>' +
+             '</div>')
+          : '') +
         '</div>';
     }).join('');
+  }
+
+  async function confirmReceived(orderId){
+    const headers = getAuthHeader();
+
+    if(headers.Authorization){
+      try{
+        await axios.put(BACKEND + '/api/orders/' + encodeURIComponent(orderId) + '/received', {}, { headers: headers });
+        if(window.showNotification) window.showNotification('Đã chuyển đơn sang hoàn thành', 'success');
+        await render();
+        switchTab('completed');
+        return;
+      }catch(e){
+        const msg = e && e.response && e.response.data && e.response.data.message
+          ? e.response.data.message
+          : 'Không thể xác nhận nhận hàng lúc này';
+        if(window.showNotification) window.showNotification(msg, 'error');
+        return;
+      }
+    }
+
+    // Fallback local mode for non-auth sessions.
+    try{
+      const list = JSON.parse(localStorage.getItem('orders_v1') || '[]') || [];
+      const curId = String(getCurrentUserId());
+      const idx = list.findIndex(function(o){
+        const owner = String(o.userId != null ? o.userId : (o.userName || ''));
+        return String(o.id) === String(orderId) && owner === curId;
+      });
+      if(idx < 0){
+        if(window.showNotification) window.showNotification('Không tìm thấy đơn hàng', 'error');
+        return;
+      }
+      const ord = list[idx];
+      if(String(ord.status || '').toLowerCase() !== 'approved'){
+        if(window.showNotification) window.showNotification('Đơn chưa ở trạng thái đang giao', 'error');
+        return;
+      }
+      ord.status = 'completed';
+      ord.completedAt = Date.now();
+      list[idx] = ord;
+      localStorage.setItem('orders_v1', JSON.stringify(list));
+      localStorage.setItem('ordersUpdatedAt', String(Date.now()));
+      if(window.showNotification) window.showNotification('Đã chuyển đơn sang hoàn thành', 'success');
+      await render();
+      switchTab('completed');
+    }catch(e){
+      if(window.showNotification) window.showNotification('Không thể xác nhận nhận hàng lúc này', 'error');
+    }
   }
 
   async function cancelOrder(orderId){
@@ -287,6 +391,7 @@
   async function render(){
     const ordersRaw = await fetchOrders();
     const orders = (ordersRaw || []).slice().sort(function(a,b){ return (Number(b.createdAt)||0) - (Number(a.createdAt)||0); });
+    syncApprovedShippingNotifications(orders);
     const groups = classify(orders);
 
     renderGroup(document.getElementById('orders-pending'), groups.pending, 'pending');
@@ -306,17 +411,33 @@
 
     document.body.addEventListener('click', async function(ev){
       const btn = ev.target.closest('[data-cancel-order-id]');
-      if(!btn) return;
-      const orderId = btn.getAttribute('data-cancel-order-id');
-      if(!orderId) return;
+      if(btn){
+        const orderId = btn.getAttribute('data-cancel-order-id');
+        if(!orderId) return;
 
-      if(!window.confirm('Bạn chắc chắn muốn hủy đơn này?')) return;
+        if(!window.confirm('Bạn chắc chắn muốn hủy đơn này?')) return;
 
-      btn.disabled = true;
+        btn.disabled = true;
+        try{
+          await cancelOrder(orderId);
+        }finally{
+          btn.disabled = false;
+        }
+        return;
+      }
+
+      const receivedBtn = ev.target.closest('[data-received-order-id]');
+      if(!receivedBtn) return;
+      const receivedId = receivedBtn.getAttribute('data-received-order-id');
+      if(!receivedId) return;
+
+      if(!window.confirm('Xác nhận bạn đã nhận được hàng?')) return;
+
+      receivedBtn.disabled = true;
       try{
-        await cancelOrder(orderId);
+        await confirmReceived(receivedId);
       }finally{
-        btn.disabled = false;
+        receivedBtn.disabled = false;
       }
     });
 

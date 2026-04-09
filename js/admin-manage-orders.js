@@ -72,6 +72,14 @@
     return 0
   }
 
+  function statusLabel(status){
+    const s = String(status || '').toLowerCase()
+    if(s === 'pending') return 'Chờ xác nhận'
+    if(s === 'approved') return 'Đã xác nhận'
+    if(s === 'cancelled') return 'Đã hủy'
+    return String(status || '')
+  }
+
   async function fetchOrderById(orderId){
     try{
       // Local fallback order ids (e.g. o_123...) are not backend numeric ids.
@@ -136,13 +144,13 @@
             <div><strong>Người đặt:</strong> ${escapeHtml(order.userName||order.userId||'Khách')}</div>
             <div class="small text-muted">Ngày: ${new Date(order.createdAt).toLocaleString()}</div>
             <div class="mt-2"><strong>Phương thức:</strong> ${escapeHtml(order.method||'')}</div>
-            <div class="mt-2"><strong>Trạng thái:</strong> <span class="badge bg-${order.status==='approved'?'info':order.status==='cancelled'?'danger':'warning'}">${escapeHtml(order.status)}</span></div>
+            <div class="mt-2"><strong>Trạng thái:</strong> <span class="badge bg-${order.status==='approved'?'info':order.status==='cancelled'?'danger':'warning'}">${escapeHtml(statusLabel(order.status))}</span></div>
             ${order.shipper?`<div class="mt-1 small text-muted">Shipper: ${escapeHtml(order.shipper)}</div>`:''}
           </div>
           <div class="text-end">
             <div class="fw-bold">${fmt(order.total||0)}</div>
             <div class="mt-2">
-              <button class="btn btn-sm btn-success me-1 btn-approve">Xác nhận</button>
+              ${String(order.status||'').toLowerCase() === 'approved' ? '' : '<button class="btn btn-sm btn-success me-1 btn-approve">Xác nhận</button>'}
               <button class="btn btn-sm btn-danger me-1 btn-cancel">Hủy</button>
               <button class="btn btn-sm btn-outline-secondary btn-view">Xem</button>
             </div>
@@ -156,8 +164,10 @@
       `
 
       // attach handlers
-      item.querySelector('.btn-approve').addEventListener('click', async function(){
-        if(order.status === 'approved') return alert('Đã xác nhận')
+      const approveBtn = item.querySelector('.btn-approve')
+      if(approveBtn){
+        approveBtn.addEventListener('click', async function(){
+          if(order.status === 'approved') return alert('Đã xác nhận')
         const ship = await openShipperModal(order)
         if(!ship) return
         order.shipper = ship.shipper
@@ -181,13 +191,18 @@
         writeOrders(readOrders().map(o=> o.id===order.id?order:o))
         try{
           const userTarget = order.userId || 'user'
-          const nlist = (window.notifications.list && window.notifications.list()) || []
-          const filtered = nlist.filter(n => !(String(n.orderId) === String(order.id) && (n.target===userTarget || n.target==='user' || !n.target)))
-          localStorage.setItem('site_notifications_v1', JSON.stringify(filtered))
-          localStorage.setItem('notificationsUpdatedAt', Date.now())
+          if(window.notifications && window.notifications.add){
+            window.notifications.add({
+              title: 'Đơn hàng đang giao',
+              message: 'Đơn ' + order.id + ' đang trên đường giao tới bạn trong thời gian sớm nhất.',
+              target: userTarget,
+              orderId: order.id
+            })
+          }
         }catch(e){ console.warn(e) }
         await renderList()
-      })
+        })
+      }
 
       item.querySelector('.btn-cancel').addEventListener('click', async function(){
         let reason = ''
@@ -248,7 +263,7 @@
     modal.className = 'modal fade'
     modal.tabIndex = -1
     modal.innerHTML = `
-      <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Chi tiết ${escapeHtml(order.id)}</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div><strong>Trạng thái:</strong> ${escapeHtml(order.status)}</div><div class="mt-2"><strong>Địa chỉ:</strong> ${escapeHtml(order.address)}</div><div class="mt-2"><strong>SDT:</strong> ${escapeHtml(order.phone)}</div><div class="mt-3"><strong>Sản phẩm:</strong><div class="list-group mt-2">${ (order.items||[]).map(it=>`<div class="list-group-item d-flex justify-content-between"><div>${escapeHtml(it.name)}<div class="small text-muted">Size: ${escapeHtml(it.size||'-')} x ${it.qty}</div></div><div>${fmt(parseInt(String(it.price||'').replace(/[^0-9]/g,''),10)||0)}</div></div>`).join('') }</div></div><div class="mt-3"><strong>Tổng:</strong> ${fmt(order.total||0)}</div><div class="mt-2"><strong>Ghi chú:</strong> ${escapeHtml(order.cancelReason||'')}</div></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button></div></div></div>`
+      <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Chi tiết ${escapeHtml(order.id)}</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div><strong>Trạng thái:</strong> ${escapeHtml(statusLabel(order.status))}</div><div class="mt-2"><strong>Địa chỉ:</strong> ${escapeHtml(order.address)}</div><div class="mt-2"><strong>SDT:</strong> ${escapeHtml(order.phone)}</div><div class="mt-3"><strong>Sản phẩm:</strong><div class="list-group mt-2">${ (order.items||[]).map(it=>`<div class="list-group-item d-flex justify-content-between"><div>${escapeHtml(it.name)}<div class="small text-muted">Size: ${escapeHtml(it.size||'-')} x ${it.qty}</div></div><div>${fmt(parseInt(String(it.price||'').replace(/[^0-9]/g,''),10)||0)}</div></div>`).join('') }</div></div><div class="mt-3"><strong>Tổng:</strong> ${fmt(order.total||0)}</div><div class="mt-2"><strong>Ghi chú:</strong> ${escapeHtml(order.cancelReason||'')}</div></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button></div></div></div>`
     document.body.appendChild(modal)
     const bs = new bootstrap.Modal(modal)
     bs.show()
