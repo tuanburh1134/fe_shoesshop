@@ -1,5 +1,5 @@
 (function(){
-  const BACKEND = 'http://localhost:8080'
+  const BACKEND = 'https://be-shoesshop.onrender.com'
   const AUTH_API = BACKEND + '/api/auth'
 
   function notifyError(title, msg){

@@ -1,4 +1,5 @@
 (function(){
+<<<<<<< HEAD
   const BACKEND = (function(){
     try{
       const host = String(window.location.hostname || '').toLowerCase();
@@ -6,6 +7,9 @@
     }catch(e){}
     return window.BACKEND || 'http://localhost:8080';
   })();
+=======
+  const BACKEND = window.BACKEND || 'https://be-shoesshop.onrender.com';
+>>>>>>> 0fc1fc42575b5ba83331a4b4a1f96d742d09a4a8
   const CHAT_ENDPOINT = BACKEND + '/api/ai/chat'; // backend should forward to Gemini using stored token
   const STORE_KEY = 'ai_chat_history_v1';
 
