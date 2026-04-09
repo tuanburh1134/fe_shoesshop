@@ -1,4 +1,4 @@
-const BACKEND = 'http://localhost:8080';
+const BACKEND = 'https://be-shoesshop.onrender.com';
 const API_URL = BACKEND + "/api/products";
 function escapeHtml(s){ return String(s||'').replace(/[&"'<>]/g, function(m){ return ({'&':'&amp;','"':'&quot;',"'":"&#39;",'<':'&lt;','>':'&gt;'})[m] }) }
 let CURRENT_BRAND_FILTER = null;
