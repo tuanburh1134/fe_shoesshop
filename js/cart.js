@@ -265,9 +265,6 @@
         try{ return !!(err && err.response && err.response.status === 401) }catch(e){ return false }
     }
 
-    function parsePayAmount(total){
-        const n = Number(total || 0);
-
     function getApiErrorMessage(err, fallback){
         try{
             const d = err && err.response ? err.response.data : null;
@@ -291,6 +288,9 @@
             throw err;
         }
     }
+
+    function parsePayAmount(total){
+        const n = Number(total || 0);
         return Number.isFinite(n) ? Math.round(n) : 0;
     }
 
@@ -510,20 +510,7 @@
                 try{
                     const cur = JSON.parse(localStorage.getItem('currentUser')||'null')||null
                     const headers = getAuthHeaders();
-<<<<<<< HEAD
                     const res = await postWithOptionalAuthRetry(BACKEND + '/api/orders', orderPayload, headers)
-=======
-                    let res
-                    try{
-                        res = await axios.post(BACKEND + '/api/orders', orderPayload, { headers })
-                    }catch(err){
-                        if(is401(err)){
-                            res = await axios.post(BACKEND + '/api/orders', orderPayload)
-                        } else {
-                            throw err;
-                        }
-                    }
->>>>>>> 0fc1fc42575b5ba83331a4b4a1f96d742d09a4a8
                     const createdOrderId = res && res.data && res.data.id ? res.data.id : ('o_' + Date.now())
                     try{
                         if(cur && cur.username && cur.password && deviceId){
@@ -532,20 +519,7 @@
                     }catch(e){ console.debug('Device register skipped/failed', e) }
 
                     if(payload.method === 'bank_transfer'){
-<<<<<<< HEAD
                         const payRes = await postWithOptionalAuthRetry(BACKEND + '/api/payments/payos/create', { orderId: createdOrderId }, headers);
-=======
-                        let payRes
-                        try{
-                            payRes = await axios.post(BACKEND + '/api/payments/payos/create', { orderId: createdOrderId }, { headers });
-                        }catch(err){
-                            if(is401(err)){
-                                payRes = await axios.post(BACKEND + '/api/payments/payos/create', { orderId: createdOrderId });
-                            } else {
-                                throw err;
-                            }
-                        }
->>>>>>> 0fc1fc42575b5ba83331a4b4a1f96d742d09a4a8
                         const paymentInfo = payRes && payRes.data ? payRes.data : {};
                         const finalStatus = await showPayOsQrModal(createdOrderId, total, paymentInfo, headers);
                         if(finalStatus === 'paid'){

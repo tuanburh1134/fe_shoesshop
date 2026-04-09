@@ -1,6 +1,5 @@
 // Simple client-side auth for demo purposes
 (function(){
-<<<<<<< HEAD
   const BACKEND = (function(){
     try{
       var host = String(window.location.hostname || '').toLowerCase()
@@ -8,9 +7,6 @@
     }catch(e){}
     return 'http://localhost:8080'
   })()
-=======
-  const BACKEND = 'https://be-shoesshop.onrender.com'
->>>>>>> 0fc1fc42575b5ba83331a4b4a1f96d742d09a4a8
   const AUTH_API = BACKEND + '/api/auth'
   const GOOGLE_CLIENT_ID = '213568517226-ac26ekl9ngmsh2agc1i3qmtspnajd78c.apps.googleusercontent.com'
 
