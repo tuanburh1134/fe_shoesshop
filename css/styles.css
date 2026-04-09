@@ -115,7 +115,7 @@ body{font-family:Segoe UI, Roboto, Arial, sans-serif;color:#333;background:#FFFF
 .account-dropdown .menu-icon{width:18px;height:18px;display:inline-block;margin-right:8px;color:var(--primary)}
 
 /* admin layout */
-.admin-layout{min-height:100vh;background:#f5f7fb}
+.admin-layout{min-height:100vh;background:#f5f7fb;flex:1 0 auto;width:100%}
 .admin-sidebar{width:260px;background:#eef4f9;border-right:1px solid #e6ecef}
 .admin-main{padding:28px}
 .admin-sidebar a{color:#333;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;box-sizing:border-box}
@@ -137,6 +137,10 @@ body{font-family:Segoe UI, Roboto, Arial, sans-serif;color:#333;background:#FFFF
 .admin-sidebar a .fa{font-size:18px}
 .admin-sidebar a{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .admin-sidebar ul{margin:0}
+
+/* Keep contact footer below all admin content (no visual overlap). */
+.admin-layout + #global-contact-footer{margin-top:0 !important}
+#global-contact-footer{clear:both}
 
 /* Account dropdown */
 .account-dropdown{position:absolute;top:56px;right:0;background:transparent;color:#111;border-radius:10px;z-index:1050;padding:6px}

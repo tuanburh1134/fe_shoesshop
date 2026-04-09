@@ -1,5 +1,11 @@
 (function(){
-  const BACKEND = window.BACKEND || 'http://localhost:8080';
+  const BACKEND = (function(){
+    try{
+      const host = String(window.location.hostname || '').toLowerCase();
+      if(host.includes('onrender.com')) return 'https://be-shoesshop.onrender.com';
+    }catch(e){}
+    return window.BACKEND || 'http://localhost:8080';
+  })();
   const CHAT_ENDPOINT = BACKEND + '/api/ai/chat'; // backend should forward to Gemini using stored token
   const STORE_KEY = 'ai_chat_history_v1';
 
@@ -134,11 +140,16 @@
           const newHist = loadHistory(); newHist.push(msg); saveHistory(newHist);
           body.appendChild(renderMsg('bot', msg.text)); body.scrollTop = body.scrollHeight;
         } else {
-          throw new Error('Bad response');
+          let detail = 'Bad response';
+          try{
+            const errJson = await res.json();
+            if(errJson && errJson.error) detail = errJson.error;
+          }catch(e){ /* ignore parse */ }
+          throw new Error(detail + ' (HTTP ' + res.status + ')');
         }
       }catch(err){
         thinking.remove();
-        const fallback = 'Không thể trả lời lúc này. Vui lòng thử lại sau.';
+        const fallback = 'Không thể trả lời lúc này: ' + (err && err.message ? err.message : 'Vui lòng thử lại sau.');
         const msg = { role:'bot', text: fallback };
         const newHist = loadHistory(); newHist.push(msg); saveHistory(newHist);
         body.appendChild(renderMsg('bot', msg.text)); body.scrollTop = body.scrollHeight;

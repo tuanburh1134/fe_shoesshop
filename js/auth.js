@@ -1,6 +1,12 @@
 // Simple client-side auth for demo purposes
 (function(){
-  const BACKEND = 'http://localhost:8080'
+  const BACKEND = (function(){
+    try{
+      var host = String(window.location.hostname || '').toLowerCase()
+      if(host.indexOf('onrender.com') >= 0) return 'https://be-shoesshop.onrender.com'
+    }catch(e){}
+    return 'http://localhost:8080'
+  })()
   const AUTH_API = BACKEND + '/api/auth'
   const GOOGLE_CLIENT_ID = '213568517226-ac26ekl9ngmsh2agc1i3qmtspnajd78c.apps.googleusercontent.com'
 

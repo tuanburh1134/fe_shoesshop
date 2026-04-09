@@ -263,6 +263,30 @@
 
     function parsePayAmount(total){
         const n = Number(total || 0);
+
+    function getApiErrorMessage(err, fallback){
+        try{
+            const d = err && err.response ? err.response.data : null;
+            if(typeof d === 'string' && d.trim()) return d;
+            if(d && d.message) return String(d.message);
+            if(err && err.message) return String(err.message);
+        }catch(e){ /* ignore */ }
+        return fallback || 'Có lỗi xảy ra';
+    }
+
+    async function postWithOptionalAuthRetry(url, data, headers){
+        try{
+            return await axios.post(url, data, { headers: headers || {} });
+        }catch(err){
+            const hasAuth = !!(headers && headers.Authorization);
+            const status = err && err.response ? err.response.status : 0;
+            if(hasAuth && status === 401){
+                // Stored credential may be stale on production; retry anonymous for guest-compatible endpoints.
+                return await axios.post(url, data);
+            }
+            throw err;
+        }
+    }
         return Number.isFinite(n) ? Math.round(n) : 0;
     }
 
@@ -473,16 +497,16 @@
                 try{
                     const cur = JSON.parse(localStorage.getItem('currentUser')||'null')||null
                     const headers = getAuthHeaders();
-                    const res = await axios.post(BACKEND + '/api/orders', orderPayload, { headers })
+                    const res = await postWithOptionalAuthRetry(BACKEND + '/api/orders', orderPayload, headers)
                     const createdOrderId = res && res.data && res.data.id ? res.data.id : ('o_' + Date.now())
                     try{
                         if(cur && cur.username && cur.password && deviceId){
-                            await axios.post(BACKEND + '/api/devices/register', { deviceId }, { headers })
+                            await postWithOptionalAuthRetry(BACKEND + '/api/devices/register', { deviceId }, headers)
                         }
                     }catch(e){ console.debug('Device register skipped/failed', e) }
 
                     if(payload.method === 'bank_transfer'){
-                        const payRes = await axios.post(BACKEND + '/api/payments/payos/create', { orderId: createdOrderId }, { headers });
+                        const payRes = await postWithOptionalAuthRetry(BACKEND + '/api/payments/payos/create', { orderId: createdOrderId }, headers);
                         const paymentInfo = payRes && payRes.data ? payRes.data : {};
                         const finalStatus = await showPayOsQrModal(createdOrderId, total, paymentInfo, headers);
                         if(finalStatus === 'paid'){
@@ -503,7 +527,7 @@
                 }catch(err){
                     console.debug('Server checkout failed, falling back to local orders', err)
                     if(payload.method === 'bank_transfer'){
-                        if(window.showNotification) window.showNotification('Không thể tạo thanh toán PayOS','Vui lòng thử lại sau', 'error', 2600)
+                        if(window.showNotification) window.showNotification('Không thể tạo thanh toán PayOS', getApiErrorMessage(err, 'Vui lòng đăng nhập lại rồi thử tiếp'), 'error', 3200)
                         return;
                     }
 
