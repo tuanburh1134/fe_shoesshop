@@ -1,5 +1,5 @@
 (function(){
-  const BACKEND = 'http://localhost:8080';
+  const BACKEND = 'https://be-shoesshop.onrender.com';
   const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
   const tabs = ['pending', 'approved', 'completed', 'history'];
   let productImageMap = {};

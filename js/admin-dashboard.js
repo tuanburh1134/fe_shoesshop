@@ -1,5 +1,5 @@
 (function(){
-  const BACKEND = 'http://localhost:8080';
+  const BACKEND = 'https://be-shoesshop.onrender.com';
   const ORDERS_KEY = 'orders_v1';
 
   function getAuthHeaders(){

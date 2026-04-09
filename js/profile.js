@@ -11,7 +11,7 @@
   const statsTotalItems = qs('#total-purchased')
   const statsFirstPurchase = qs('#first-purchase')
   // Use absolute backend URL when frontend is opened via file:// (no dev static server)
-  const BACKEND = window.location.protocol === 'file:' ? 'http://localhost:8080' : ''
+  const BACKEND = window.location.protocol === 'file:' ? 'https://be-shoesshop.onrender.com' : ''
 
   function persistToUsers(cur){
     try{

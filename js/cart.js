@@ -1,7 +1,7 @@
 // Cart utility: stores cart in localStorage under 'cart'
 (function(){
     const KEY = 'cart_items_v1';
-    const BACKEND = 'http://localhost:8080';
+    const BACKEND = 'https://be-shoesshop.onrender.com';
 
     function getOrCreateDeviceId(){
         let deviceId = localStorage.getItem('device_id_v1');

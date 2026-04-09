@@ -26,7 +26,7 @@
     try{
       const hdr = getAuthHeader()
       if(hdr.Authorization){
-        const resp = await fetch('http://localhost:8080/api/orders', { headers: Object.assign({'Content-Type':'application/json'}, hdr) })
+        const resp = await fetch('https://be-shoesshop.onrender.com/api/orders', { headers: Object.assign({'Content-Type':'application/json'}, hdr) })
         if(resp.ok){ list = await resp.json() }
         else { list = readOrders() || [] }
       } else {
@@ -85,7 +85,7 @@
         // call backend to update status
         try{
           const hdr = Object.assign({'Content-Type':'application/json'}, getAuthHeader())
-          const url = 'http://localhost:8080/api/orders/' + order.id + '/status?status=approved&shipper=' + encodeURIComponent(ship.shipper) + '&address=' + encodeURIComponent(ship.address||'')
+          const url = 'https://be-shoesshop.onrender.com/api/orders/' + order.id + '/status?status=approved&shipper=' + encodeURIComponent(ship.shipper) + '&address=' + encodeURIComponent(ship.address||'')
           const resp = await fetch(url, { method: 'PUT', headers: hdr })
           if(resp.ok){
             try{ const updated = await resp.json(); order = Object.assign(order, updated) }catch(e){}
@@ -110,7 +110,7 @@
         // call backend to update status (admin only)
         try{
           const hdr = Object.assign({'Content-Type':'application/json'}, getAuthHeader())
-          const url = 'http://localhost:8080/api/orders/' + order.id + '/status?status=cancelled&cancelReason=' + encodeURIComponent(reason)
+          const url = 'https://be-shoesshop.onrender.com/api/orders/' + order.id + '/status?status=cancelled&cancelReason=' + encodeURIComponent(reason)
           const resp = await fetch(url, { method: 'PUT', headers: hdr })
           if(resp.ok){
             try{ const updated = await resp.json(); order = Object.assign(order, updated) }catch(e){}
